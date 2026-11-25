@@ -1,0 +1,85 @@
+use ../../ast
+use ../../stmt
+
+test if_else_if_else_nesting_test:
+    define src: String as "if score >= 90:\n    print \"A\"\nelse if score >= 80:\n    print \"B\"\nelse:\n    print \"C\"\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert length of tree.children == 1
+    define if_node: Node as tree.children[0]
+    assert if_node.kind == "if"
+    assert length of if_node.children == 3
+
+    define b0: Node as if_node.children[0]
+    assert b0.kind == "branch"
+    assert b0.value == "if"
+    assert b0.child is not nothing
+    assert length of b0.children == 1
+
+    define b1: Node as if_node.children[1]
+    assert b1.kind == "branch"
+    assert b1.value == "else if"
+    assert b1.child is not nothing
+    assert length of b1.children == 1
+
+    define b2: Node as if_node.children[2]
+    assert b2.kind == "branch"
+    assert b2.value == "else"
+    assert b2.child is nothing
+    assert length of b2.children == 1
+
+test for_each_loop_test:
+    define src: String as "for each item in items:\n    print item\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define loop: Node as tree.children[0]
+    assert loop.kind == "for-each"
+    assert loop.value == "item"
+    assert loop.child is not nothing
+    define coll: Node as value of loop.child
+    assert coll.value == "items"
+    assert length of loop.children == 1
+
+test for_range_loop_test:
+    define src: String as "for i from 1 to 10:\n    print i\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define loop: Node as tree.children[0]
+    assert loop.kind == "for-range"
+    assert loop.value == "i"
+    assert loop.child is not nothing
+    define range_node: Node as value of loop.child
+    assert range_node.kind == "range"
+    assert length of range_node.children == 2
+    assert range_node.children[0].value == "1"
+    assert range_node.children[1].value == "10"
+    assert length of loop.children == 1
+
+test while_loop_test:
+    define src: String as "while count > 0:\n    set count to count - 1\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define loop: Node as tree.children[0]
+    assert loop.kind == "while"
+    assert loop.child is not nothing
+    define cond: Node as value of loop.child
+    assert cond.kind == "binary_op"
+    assert cond.value == ">"
+    assert length of loop.children == 1
+
+test nested_loops_test:
+    define src: String as "for each row in grid:\n    for each col in row:\n        print col\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define outer_loop: Node as tree.children[0]
+    assert outer_loop.kind == "for-each"
+    assert length of outer_loop.children == 1
+    define inner_loop: Node as outer_loop.children[0]
+    assert inner_loop.kind == "for-each"
+    assert inner_loop.value == "col"
+    assert length of inner_loop.children == 1

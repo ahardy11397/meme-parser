@@ -1,0 +1,105 @@
+use ../../ast
+use ../../stmt
+
+test parse_record_statement_test:
+    define src: String as "record Point:\n    x: Int\n    y: Int\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert tree.kind == "program"
+    assert length of tree.children == 1
+    define rec: Node as tree.children[0]
+    assert rec.kind == "record"
+    assert rec.value == "Point"
+    assert length of rec.children == 2
+    define f0: Node as rec.children[0]
+    assert f0.kind == "field"
+    assert f0.value == "x"
+    assert f0.child is not nothing
+    define t0: Node as value of f0.child
+    assert t0.kind == "type"
+    assert t0.value == "Int"
+
+test parse_function_statement_test:
+    define src: String as "function add(a: Int, b: Int) -> Int:\n    return a + b\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define fn: Node as tree.children[0]
+    assert fn.kind == "function"
+    assert fn.value == "add"
+    assert fn.child is not nothing
+    define sig: Node as value of fn.child
+    assert sig.kind == "signature"
+    assert sig.value == "-> Int"
+    assert length of sig.children == 2
+    define p0: Node as sig.children[0]
+    assert p0.kind == "param"
+    assert p0.value == "a"
+    assert length of fn.children == 1
+    define ret_node: Node as fn.children[0]
+    assert ret_node.kind == "return"
+
+test parse_test_statement_test:
+    define src: String as "test sample_test:\n    assert 1 == 1\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define t_node: Node as tree.children[0]
+    assert t_node.kind == "test"
+    assert t_node.value == "sample_test"
+    assert length of t_node.children == 1
+    define a_node: Node as t_node.children[0]
+    assert a_node.kind == "assert"
+
+test parse_define_statements_test:
+    define src: String as "define x as 10\ndefine y: Int as 20\ndefine list items as [1, 2]\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert length of tree.children == 3
+    define d0: Node as tree.children[0]
+    assert d0.kind == "define"
+    assert d0.value == "x"
+    assert d0.child is not nothing
+    define d1: Node as tree.children[1]
+    assert d1.kind == "define"
+    assert d1.value == "y: Int"
+    define d2: Node as tree.children[2]
+    assert d2.kind == "define"
+    assert d2.value == "items"
+
+test parse_assign_and_io_statements_test:
+    define src: String as "set total to 100\nprint \"val:\", total\nprint error \"bad\"\nexit with code 0\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert length of tree.children == 4
+    define s0: Node as tree.children[0]
+    assert s0.kind == "assign"
+    assert s0.value == "total"
+    define s1: Node as tree.children[1]
+    assert s1.kind == "print"
+    assert length of s1.children == 2
+    define s2: Node as tree.children[2]
+    assert s2.kind == "print-err"
+    assert length of s2.children == 1
+    define s3: Node as tree.children[3]
+    assert s3.kind == "exit"
+
+test parse_use_call_add_remove_statements_test:
+    define src: String as "use lexer\ncall do_work(1, 2)\nadd 5 to nums\nappend 6 to nums\nremove item from nums\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert length of tree.children == 5
+    assert tree.children[0].kind == "use"
+    assert tree.children[0].value == "lexer"
+    assert tree.children[1].kind == "call"
+    assert tree.children[1].value == "do_work"
+    assert tree.children[2].kind == "add"
+    assert tree.children[2].value == "nums"
+    assert tree.children[3].kind == "add"
+    assert tree.children[3].value == "nums"
+    assert tree.children[4].kind == "remove"
+    assert tree.children[4].value == "nums"

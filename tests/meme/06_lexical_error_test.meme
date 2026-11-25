@@ -1,0 +1,17 @@
+use ../../ast
+use ../../stmt
+use ../../lexer
+
+test unterminated_string_lexical_error_test:
+    define src: String as "define x as \"unterminated string literal\n"
+    define toks: List<Token> as tokenize(src)
+    assert token_has_error(toks)
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is nothing
+
+test unexpected_character_lexical_error_test:
+    define src: String as "define x as 10 @ 20\n"
+    define toks: List<Token> as tokenize(src)
+    assert token_has_error(toks)
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is nothing

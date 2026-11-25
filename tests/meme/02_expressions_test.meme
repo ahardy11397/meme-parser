@@ -1,0 +1,82 @@
+use ../../ast
+use ../../stmt
+
+test precedence_mult_under_add_test:
+    define src: String as "define x as 1 + 2 * 3\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    assert def_node.child is not nothing
+    define root: Node as value of def_node.child
+    assert root.kind == "binary_op"
+    assert root.value == "+"
+    assert length of root.children == 2
+    assert root.children[0].kind == "int"
+    assert root.children[0].value == "1"
+    define mult: Node as root.children[1]
+    assert mult.kind == "binary_op"
+    assert mult.value == "*"
+    assert mult.children[0].value == "2"
+    assert mult.children[1].value == "3"
+
+test precedence_parentheses_test:
+    define src: String as "define x as (1 + 2) * 3\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define root: Node as value of def_node.child
+    assert root.kind == "binary_op"
+    assert root.value == "*"
+    assert length of root.children == 2
+    define add_node: Node as root.children[0]
+    assert add_node.kind == "binary_op"
+    assert add_node.value == "+"
+    assert add_node.children[0].value == "1"
+    assert add_node.children[1].value == "2"
+    assert root.children[1].value == "3"
+
+test precedence_and_under_or_test:
+    define src: String as "define x as a or b and c\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define root: Node as value of def_node.child
+    assert root.kind == "binary_op"
+    assert root.value == "or"
+    assert root.children[0].value == "a"
+    define and_node: Node as root.children[1]
+    assert and_node.kind == "binary_op"
+    assert and_node.value == "and"
+    assert and_node.children[0].value == "b"
+    assert and_node.children[1].value == "c"
+
+test precedence_comparison_looser_than_arithmetic_test:
+    define src: String as "define ok as a + 1 > b * 2\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define root: Node as value of def_node.child
+    assert root.kind == "binary_op"
+    assert root.value == ">"
+    assert root.children[0].kind == "binary_op"
+    assert root.children[0].value == "+"
+    assert root.children[1].kind == "binary_op"
+    assert root.children[1].value == "*"
+
+test unary_and_empty_collections_test:
+    define src: String as "define f as not flag\ndefine items as empty List<Int>\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define d0: Node as tree.children[0]
+    define u_node: Node as value of d0.child
+    assert u_node.kind == "unary_op"
+    assert u_node.value == "not"
+    define d1: Node as tree.children[1]
+    define e_node: Node as value of d1.child
+    assert e_node.kind == "empty_collection"
+    assert e_node.value == "List<Int>"

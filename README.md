@@ -1,0 +1,136 @@
+# meme-parser
+
+Self-hosting Step 5: A structural recursive-descent parser for Memelang source code, written entirely in 100% Memelang.
+
+`meme-parser` ingests token streams from the vendored lexical analyzer and produces a typed AST (Abstract Syntax Tree) representing statements and expressions, rendering the resulting tree either as indented text to standard output or as structured JSON records to a file.
+
+## CLI Usage
+
+Build the standalone native binary using `meme build`:
+
+```bash
+uv run --project /mnt/ssd/projects/meme meme build main.meme -o parser_bin --provider heuristic
+```
+
+### Commands
+
+#### 1. Print parsed AST as indented text:
+```bash
+./parser_bin parse <file.meme>
+```
+
+Example:
+```bash
+./parser_bin parse main.meme | head -n 25
+```
+
+#### 2. Write parsed AST as JSON:
+```bash
+./parser_bin parse <file.meme> -o <out.json>
+```
+
+Example:
+```bash
+./parser_bin parse main.meme -o ast.json
+```
+
+## Grammar Subset (Core)
+
+The parser recognizes the canonical Memelang core grammar and maps recognized structures into typed AST nodes:
+
+### Statements
+- `record <Name>:` + indented `field: Type` lines -> `record` node with `field` children
+- `function <name>(<params>) -> <Type>:` -> `function` node with `signature` child and body `children`
+- `test <name>:` -> `test` node with body `children`
+- `define <name> as <expr>` / `define <name>: <Type> as <expr>` -> `define` node with `child` containing the expression
+- `set <target> to <expr>` -> `assign` node with `child` containing the expression
+- `print <expr...>` -> `print` node with argument expression `children`
+- `print error <expr...>` -> `print-err` node with argument expression `children`
+- `if <cond>:` / `else if <cond>:` / `else:` -> `if` node containing `branch` children
+- `for each <name> in <expr>:` -> `for-each` node with collection expression `child` and body `children`
+- `for <name> from <expr> to <expr>:` -> `for-range` node with `range` child and body `children`
+- `while <cond>:` -> `while` node with condition `child` and body `children`
+- `return <expr>` / `return` -> `return` node
+- `exit with code <expr>` -> `exit` node with code expression `child`
+- `use <module>` -> `use` node
+- `call <name>(<args>)` -> `call` node with argument `children`
+- `add <expr> to <target>` / `append <expr> to <target>` -> `add` node
+- `remove <expr> from <target>` -> `remove` node
+- `write <expr> as json to file <path>` / `write file <path> with <expr>` -> `write` node
+- `assert <expr>` -> `assert` node
+- `break` / `continue` -> `break` / `continue` node
+
+### Expressions (Precedence Hierarchy)
+Expressions are parsed via recursive descent, strictly respecting standard precedence:
+1. `or`: logical OR (`a or b`)
+2. `and`: logical AND (`a and b`)
+3. Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`, `contains`, `is nothing`, `is not nothing`, `or else`
+4. Additive: `+`, `-`
+5. Multiplicative: `*`, `/`, `%`
+6. Unary: `-`, `+`, `not`, `optional`, `value of`, `text of`, `is digit`, `is letter`, `is upper`, `is lower`
+7. Postfix:
+   - Indexing: `x[i]`, `m["k"][0]`
+   - Field access: `x.field`, `user.profile.name`
+   - Function call: `f(args)`
+   - Record constructor: `RecordName(field1=val1, field2=val2)`
+8. Primary:
+   - Literals: `Int`, `Float`, `String`, `nothing`, `true`, `false`
+   - Parenthesized expressions: `(expr)`
+   - List literals: `[a, b, c]`
+   - Empty collections: `empty List<T>`, `empty Set<T>`, `empty Map<K, V>`, `empty set of <T>`
+   - Builtin forms:
+     - `length of <expr>` / `length of string <expr>`
+     - `char at <i> of <s>`
+     - `slice <s> from <a> to <b>`
+     - `index of <x> in <s>`
+     - `argument <n>` / `argument count`
+     - `sha256 of <expr>`
+     - `read string from file <p>`
+     - `read json record <R> from file <p> or else <d>`
+     - `read json records <R> from file <p> or else <d>`
+     - `read json file <p> as List<T> or else <d>`
+     - `read <Type> with prompt <p>` / `read input`
+     - `file exists <p>`
+
+## Opaque-Node Rule
+
+Any construct that is validly tokenized by the lexical analyzer but falls outside the core grammar is wrapped into an `opaque` AST node containing the raw text span of the line or expression.
+
+The parser never fails on a tokenizable file: it parses the full file and reports how much it understood. Lexical errors (such as unterminated string literals or illegal characters) exit immediately with status code `1` and a single diagnostic message.
+
+## AST Node Model
+
+The entire AST is built upon a single recursive record:
+
+```meme
+record Node:
+    kind: String
+    value: String
+    line: Int
+    child: Optional<Node>
+    children: List<Node>
+```
+
+- `kind`: The node type (e.g., `"program"`, `"record"`, `"function"`, `"define"`, `"binary_op"`, `"call"`, `"opaque"`).
+- `value`: Leaf text, identifier name, operator symbol, or raw text for opaque spans.
+- `line`: 1-based source line number.
+- `child`: Single-child wrapper (e.g., expression in a `define`, condition in an `if_branch`, target in a postfix chain).
+- `children`: Multi-child collections (statement bodies in functions/loops, branch lists in `if`, arguments in calls).
+
+## Testing
+
+Run the test suite across individual backends via `meme test`:
+
+```bash
+uv run --project /mnt/ssd/projects/meme meme test --target python
+```
+
+The test suite covers:
+- Statement parsing for all core grammar kinds
+- Expression precedence and associativity (`*` under `+`, `+` under `*`, `and` under `or`, comparisons)
+- Postfix indexing, call, and field access chains
+- Control flow (`if`/`else if`/`else`, counted loops, for-each, while)
+- Opaque fallback on unrecognized syntax
+- Lexical error propagation
+- Self-parsing roundtrip fidelity of `main.meme`, `stmt.meme`, `ast.meme`, and `expr.meme` (asserting 0 opaque nodes)
+- Parity fixtures and JSON serialization

@@ -1,0 +1,30 @@
+use ../../ast
+use ../../stmt
+
+test unrecognized_statement_becomes_opaque_test:
+    define src: String as "define x as 1\nunrecognized custom syntax line\ndefine y as 2\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert length of tree.children == 3
+    assert tree.children[0].kind == "define"
+    assert tree.children[0].value == "x"
+    assert tree.children[1].kind == "opaque"
+    assert tree.children[1].value == "unrecognized custom syntax line"
+    assert tree.children[2].kind == "define"
+    assert tree.children[2].value == "y"
+    assert count_opaque_nodes(tree) == 1
+
+test unrecognized_statement_with_block_test:
+    define src: String as "custom block header:\n    define a as 1\n    define b as 2\nprint \"done\"\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert length of tree.children == 2
+    define op_node: Node as tree.children[0]
+    assert op_node.kind == "opaque"
+    assert length of op_node.children == 2
+    assert op_node.children[0].kind == "define"
+    assert op_node.children[1].kind == "define"
+    assert tree.children[1].kind == "print"
+    assert count_opaque_nodes(tree) == 1

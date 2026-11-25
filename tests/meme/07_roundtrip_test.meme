@@ -1,0 +1,63 @@
+use ../../ast
+use ../../stmt
+
+function get_main_path() -> String:
+    if file exists "main.meme":
+        return "main.meme"
+    return "../../main.meme"
+
+function get_stmt_path() -> String:
+    if file exists "stmt.meme":
+        return "stmt.meme"
+    return "../../stmt.meme"
+
+function get_ast_path() -> String:
+    if file exists "ast.meme":
+        return "ast.meme"
+    return "../../ast.meme"
+
+function get_expr_path() -> String:
+    if file exists "expr.meme":
+        return "expr.meme"
+    return "../../expr.meme"
+
+function get_tmp_dir() -> String:
+    if file exists "main.meme":
+        return "tests/tmp"
+    return "../tmp"
+
+test self_parse_main_and_stmt_test:
+    define main_opt: Optional<Node> as parse_file(get_main_path())
+    assert main_opt is not nothing
+    define main_tree: Node as value of main_opt
+    assert count_opaque_nodes(main_tree) == 0
+
+    define stmt_opt: Optional<Node> as parse_file(get_stmt_path())
+    assert stmt_opt is not nothing
+    define stmt_tree: Node as value of stmt_opt
+    assert count_opaque_nodes(stmt_tree) == 0
+
+    define ast_opt: Optional<Node> as parse_file(get_ast_path())
+    assert ast_opt is not nothing
+    define ast_tree: Node as value of ast_opt
+    assert count_opaque_nodes(ast_tree) == 0
+
+    define expr_opt: Optional<Node> as parse_file(get_expr_path())
+    assert expr_opt is not nothing
+    define expr_tree: Node as value of expr_opt
+    assert count_opaque_nodes(expr_tree) == 0
+
+test roundtrip_vendored_copy_in_tmp_test:
+    define tmp_dir: String as get_tmp_dir()
+    create directory tmp_dir
+    define main_content: Optional<String> as read string from file get_main_path() or else nothing
+    assert main_content is not nothing
+    define tmp_path: String as tmp_dir + "/main_roundtrip_test.meme"
+    write file tmp_path with value of main_content
+
+    define opt: Optional<Node> as parse_file(tmp_path)
+    assert opt is not nothing
+    define tree: Node as value of opt
+    assert count_opaque_nodes(tree) == 0
+
+    delete file tmp_path

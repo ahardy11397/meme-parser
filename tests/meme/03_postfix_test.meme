@@ -1,0 +1,74 @@
+use ../../ast
+use ../../stmt
+
+test postfix_indexing_chain_test:
+    define src: String as "define x as m[\"k\"][0]\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define outer_idx: Node as value of def_node.child
+    assert outer_idx.kind == "index"
+    assert length of outer_idx.children == 1
+    assert outer_idx.children[0].value == "0"
+    assert outer_idx.child is not nothing
+    define inner_idx: Node as value of outer_idx.child
+    assert inner_idx.kind == "index"
+    assert inner_idx.children[0].value == "\"k\""
+    assert inner_idx.child is not nothing
+    define base: Node as value of inner_idx.child
+    assert base.kind == "identifier"
+    assert base.value == "m"
+
+test postfix_call_chain_and_nested_calls_test:
+    define src: String as "define res as f(1, g(2))\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define call_f: Node as value of def_node.child
+    assert call_f.kind == "call"
+    assert call_f.value == "f"
+    assert length of call_f.children == 2
+    assert call_f.children[0].value == "1"
+    define call_g: Node as call_f.children[1]
+    assert call_g.kind == "call"
+    assert call_g.value == "g"
+    assert call_g.children[0].value == "2"
+
+test postfix_field_access_chain_test:
+    define src: String as "define name as user.profile.name\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define f_outer: Node as value of def_node.child
+    assert f_outer.kind == "field_access"
+    assert f_outer.value == "name"
+    assert f_outer.child is not nothing
+    define f_inner: Node as value of f_outer.child
+    assert f_inner.kind == "field_access"
+    assert f_inner.value == "profile"
+    assert f_inner.child is not nothing
+    define f_base: Node as value of f_inner.child
+    assert f_base.kind == "identifier"
+    assert f_base.value == "user"
+
+test record_init_with_named_fields_test:
+    define src: String as "define p as Point(x=10, y=20)\n"
+    define tree_opt: Optional<Node> as parse_source(src)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define def_node: Node as tree.children[0]
+    define r_init: Node as value of def_node.child
+    assert r_init.kind == "record_init"
+    assert r_init.value == "Point"
+    assert length of r_init.children == 2
+    define f0: Node as r_init.children[0]
+    assert f0.kind == "field_init"
+    assert f0.value == "x"
+    assert (value of f0.child).value == "10"
+    define f1: Node as r_init.children[1]
+    assert f1.kind == "field_init"
+    assert f1.value == "y"
+    assert (value of f1.child).value == "20"

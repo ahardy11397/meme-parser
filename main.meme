@@ -1,0 +1,59 @@
+# main.meme - CLI router for meme-parser
+use ast
+use stmt
+use lexer
+
+function print_usage() -> Void:
+    print "Usage: parser <command> [args]"
+    print "Commands:"
+    print "  parse <file.meme>                 Print parsed AST as indented text"
+    print "  parse <file.meme> -o <out.json>   Write parsed AST as JSON to file"
+
+function run_cli() -> Void:
+    define argc: Int as argument count
+    if argc < 2:
+        call print_usage()
+        exit with code 1
+
+    define cmd: String as argument 1
+    if cmd != "parse":
+        print error "Unknown command: " + cmd
+        call print_usage()
+        exit with code 1
+
+    if argc != 3 and argc != 5:
+        print error "Usage: parser parse <file.meme> [-o <out.json>]"
+        exit with code 1
+
+    if argc == 5 and argument 3 != "-o":
+        print error "Usage: parser parse <file.meme> [-o <out.json>]"
+        exit with code 1
+
+    define in_path: String as argument 2
+    define content_opt: Optional<String> as read string from file in_path or else nothing
+    if content_opt is nothing:
+        print error "Error: cannot read file: " + in_path
+        exit with code 1
+
+    define content: String as value of content_opt
+    define tokens: List<Token> as tokenize(content)
+    if token_has_error(tokens):
+        print error token_error_message(tokens)
+        exit with code 1
+
+    define tree_opt: Optional<Node> as parse_source(content)
+    if tree_opt is nothing:
+        print error "Error: failed to parse " + in_path
+        exit with code 1
+
+    define tree: Node as value of tree_opt
+
+    if argc == 3:
+        call emit_tree_text(tree)
+        exit with code 0
+
+    define out_path: String as argument 4
+    write tree as json to file out_path
+    exit with code 0
+
+call run_cli()

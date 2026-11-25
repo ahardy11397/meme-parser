@@ -1,0 +1,54 @@
+use ../../ast
+use ../../stmt
+
+function get_tmp_dir() -> String:
+    if file exists "main.meme":
+        return "tests/tmp"
+    return "../tmp"
+
+test real_fixture_parity_exact_shape_test:
+    define snippet: String as "function square(n: Int) -> Int:\n    return n * n\ndefine val as square(5)\n"
+    define tree_opt: Optional<Node> as parse_source(snippet)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    assert tree.kind == "program"
+    assert length of tree.children == 2
+
+    define fn: Node as tree.children[0]
+    assert fn.kind == "function"
+    assert fn.value == "square"
+    assert fn.line == 1
+    assert fn.child is not nothing
+    define sig: Node as value of fn.child
+    assert sig.kind == "signature"
+    assert sig.value == "-> Int"
+    assert length of sig.children == 1
+    assert sig.children[0].kind == "param"
+    assert sig.children[0].value == "n"
+    assert length of fn.children == 1
+    define ret_node: Node as fn.children[0]
+    assert ret_node.kind == "return"
+
+    define def_node: Node as tree.children[1]
+    assert def_node.kind == "define"
+    assert def_node.value == "val"
+    assert def_node.line == 3
+    assert def_node.child is not nothing
+    define call_node: Node as value of def_node.child
+    assert call_node.kind == "call"
+    assert call_node.value == "square"
+    assert length of call_node.children == 1
+    assert call_node.children[0].kind == "int"
+    assert call_node.children[0].value == "5"
+
+test fixture_json_write_test:
+    define tmp_dir: String as get_tmp_dir()
+    create directory tmp_dir
+    define snippet: String as "record Point:\n    x: Int\n"
+    define tree_opt: Optional<Node> as parse_source(snippet)
+    assert tree_opt is not nothing
+    define tree: Node as value of tree_opt
+    define json_path: String as tmp_dir + "/fixture_tree.json"
+    write tree as json to file json_path
+    assert file exists json_path
+    delete file json_path
