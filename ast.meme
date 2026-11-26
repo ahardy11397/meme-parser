@@ -58,3 +58,48 @@ function count_opaque_nodes(node: Node) -> Int:
     for each c in node.children:
         set count to count + count_opaque_nodes(c)
     return count
+
+function trees_equal(a: Node, b: Node) -> Bool:
+    if a.kind != b.kind:
+        return false
+    if a.value != b.value:
+        return false
+    if a.child is nothing and b.child is not nothing:
+        return false
+    if a.child is not nothing and b.child is nothing:
+        return false
+    if a.child is not nothing and b.child is not nothing:
+        define ch_a: Node as value of a.child
+        define ch_b: Node as value of b.child
+        if not trees_equal(ch_a, ch_b):
+            return false
+    if length of a.children != length of b.children:
+        return false
+    define n: Int as length of a.children
+    for i from 0 to n - 1:
+        if not trees_equal(a.children[i], b.children[i]):
+            return false
+    return true
+
+function tree_diff(a: Node, b: Node, path: String) -> String:
+    if a.kind != b.kind:
+        return "kind mismatch at " + path + ": " + a.kind + " vs " + b.kind
+    if a.value != b.value:
+        return "value mismatch at " + path + " (" + a.kind + "): \"" + a.value + "\" vs \"" + b.value + "\""
+    if a.child is nothing and b.child is not nothing:
+        return "child mismatch at " + path + ": nothing vs child"
+    if a.child is not nothing and b.child is nothing:
+        return "child mismatch at " + path + ": child vs nothing"
+    if a.child is not nothing and b.child is not nothing:
+        define d: String as tree_diff(value of a.child, value of b.child, path + ".child")
+        if length of string d > 0:
+            return d
+    if length of a.children != length of b.children:
+        return "children count mismatch at " + path + ": " + text of (length of a.children) + " vs " + text of (length of b.children)
+    define n: Int as length of a.children
+    for i from 0 to n - 1:
+        define cd: String as tree_diff(a.children[i], b.children[i], path + "[" + text of i + "]")
+        if length of string cd > 0:
+            return cd
+    return ""
+

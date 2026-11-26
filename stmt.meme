@@ -18,16 +18,16 @@ function filter_comments(tokens: List<Token>) -> List<Line>:
     define cur_line: Int as -1
     define cur_col: Int as 0
     for each tok in tokens:
-        if tok.kind != "comment":
-            if cur_line != -1 and tok.line != cur_line:
+        if cur_line != -1 and tok.line != cur_line:
+            if length of cur_tokens > 0:
                 append Line(tokens=cur_tokens, line=cur_line, col=cur_col) to result
                 set cur_tokens to empty List<Token>
-                set cur_line to tok.line
-                set cur_col to tok.col
-            else if cur_line == -1:
-                set cur_line to tok.line
-                set cur_col to tok.col
-            append tok to cur_tokens
+            set cur_line to tok.line
+            set cur_col to tok.col
+        else if cur_line == -1:
+            set cur_line to tok.line
+            set cur_col to tok.col
+        append tok to cur_tokens
     if length of cur_tokens > 0:
         append Line(tokens=cur_tokens, line=cur_line, col=cur_col) to result
     return result
@@ -84,7 +84,15 @@ function parse_record_fields(lines: List<Line>, start_idx: Int, end_idx: Int, mi
             break
         define l_tokens: List<Token> as l.tokens
         define num_toks: Int as length of l_tokens
+        if num_toks == 0:
+            set idx to idx + 1
+            continue
         define f_line: Int as l.line
+        if l_tokens[0].kind == "comment":
+            define c_node: Node as make_leaf("comment", l_tokens[0].value, f_line)
+            append c_node to fields
+            set idx to idx + 1
+            continue
         define colon_pos: Int as -1
         for i from 0 to num_toks - 1:
             if l_tokens[i].value == ":":
@@ -122,6 +130,12 @@ function parse_statements(lines: List<Line>, start_idx: Int, end_idx: Int, min_i
         define tok: Token as l_tokens[0]
         define stmt_line: Int as l.line
         define is_handled: Bool as false
+
+        if tok.kind == "comment":
+            define c_node: Node as make_leaf("comment", tok.value, stmt_line)
+            append c_node to statements
+            set idx to idx + 1
+            continue
 
         # 1. record <Name>:
         if tok.value == "record":
@@ -248,7 +262,17 @@ function parse_statements(lines: List<Line>, start_idx: Int, end_idx: Int, min_i
             # check for else if / else
             while idx < end_idx:
                 define next_l: Line as lines[idx]
-                if next_l.col == col and length of next_l.tokens > 0 and next_l.tokens[0].value == "else":
+                if next_l.col < col:
+                    break
+                if length of next_l.tokens == 0:
+                    set idx to idx + 1
+                    continue
+                if next_l.tokens[0].kind == "comment":
+                    define c_node: Node as make_leaf("comment", next_l.tokens[0].value, next_l.line)
+                    append c_node to branches
+                    set idx to idx + 1
+                    continue
+                if next_l.col == col and next_l.tokens[0].value == "else":
                     define e_toks: List<Token> as next_l.tokens
                     define e_num: Int as length of e_toks
                     define b_line: Int as next_l.line

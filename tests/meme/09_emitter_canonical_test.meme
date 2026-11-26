@@ -1,0 +1,66 @@
+use ../../ast
+use ../../stmt
+use ../../emit
+
+test record_canonical_emit_test:
+    define src: String as "record Point:\n    x: Int\n    y: Int\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "record Point:\n    x: Int\n    y: Int"
+
+test function_canonical_emit_test:
+    define src: String as "function add(a: Int, b: Int) -> Int:\n    return a + b\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "function add(a: Int, b: Int) -> Int:\n    return a + b"
+
+test test_canonical_emit_test:
+    define src: String as "test sample_test:\n    assert 1 == 1\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "test sample_test:\n    assert 1 == 1"
+
+test define_canonical_emit_test:
+    define src: String as "define x as 10\ndefine y: Int as 20\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "define x as 10\n\ndefine y: Int as 20"
+
+test assign_and_io_canonical_emit_test:
+    define src: String as "set total to 100\nprint total\nprint error \"err\"\nexit with code 0\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "set total to 100\n\nprint total\n\nprint error \"err\"\n\nexit with code 0"
+
+test control_flow_canonical_emit_test:
+    define src: String as "if x > 0:\n    print \"pos\"\nelse if x < 0:\n    print \"neg\"\nelse:\n    print \"zero\"\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "if x > 0:\n    print \"pos\"\nelse if x < 0:\n    print \"neg\"\nelse:\n    print \"zero\""
+
+test loop_canonical_emit_test:
+    define src: String as "for each item in items:\n    print item\nfor i from 1 to 10:\n    print i\nwhile n > 0:\n    return n\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "for each item in items:\n    print item\n\nfor i from 1 to 10:\n    print i\n\nwhile n > 0:\n    return n"
+
+test use_call_add_remove_canonical_emit_test:
+    define src: String as "use lexer\ncall work(1, 2)\nadd 5 to nums\nremove 5 from nums\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "use lexer\n\ncall work(1, 2)\n\nadd 5 to nums\n\nremove 5 from nums"
+
+test misc_statements_canonical_emit_test:
+    define src: String as "assert flag\nbreak\ncontinue\nwrite data as json to file \"out.json\"\nwrite file \"out.txt\" with \"hello\"\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define emitted: String as emit_program(value of opt)
+    assert emitted == "assert flag\n\nbreak\n\ncontinue\n\nwrite data as json to file \"out.json\"\n\nwrite file \"out.txt\" with \"hello\""

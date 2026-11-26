@@ -1,0 +1,65 @@
+use ../../ast
+use ../../stmt
+use ../../emit
+
+test minimal_parens_precedence_test:
+    define src1: String as "define x as (a + b) * c\n"
+    define opt1: Optional<Node> as parse_source(src1)
+    assert opt1 is not nothing
+    define em1: String as emit_program(value of opt1)
+    assert em1 == "define x as (a + b) * c"
+
+    define src2: String as "define x as a + (b * c)\n"
+    define opt2: Optional<Node> as parse_source(src2)
+    assert opt2 is not nothing
+    define em2: String as emit_program(value of opt2)
+    assert em2 == "define x as a + b * c"
+
+    # Both re-parse to the SAME tree
+    define reopt1: Optional<Node> as parse_source(em2 + "\n")
+    assert reopt1 is not nothing
+    assert trees_equal(value of opt2, value of reopt1)
+
+test minimal_parens_logical_and_comparisons_test:
+    define src1: String as "define x as (a or b) and c\n"
+    define opt1: Optional<Node> as parse_source(src1)
+    assert opt1 is not nothing
+    define em1: String as emit_program(value of opt1)
+    assert em1 == "define x as (a or b) and c"
+
+    define src2: String as "define x as a or (b and c)\n"
+    define opt2: Optional<Node> as parse_source(src2)
+    assert opt2 is not nothing
+    define em2: String as emit_program(value of opt2)
+    assert em2 == "define x as a or b and c"
+
+    define src3: String as "define ok as a + 1 > b * 2\n"
+    define opt3: Optional<Node> as parse_source(src3)
+    assert opt3 is not nothing
+    define em3: String as emit_program(value of opt3)
+    assert em3 == "define ok as a + 1 > b * 2"
+
+test minimal_parens_unary_and_postfix_test:
+    define src1: String as "define f as not (a == b)\n"
+    define opt1: Optional<Node> as parse_source(src1)
+    assert opt1 is not nothing
+    define em1: String as emit_program(value of opt1)
+    assert em1 == "define f as not (a == b)"
+
+    define src2: String as "define f as not flag\n"
+    define opt2: Optional<Node> as parse_source(src2)
+    assert opt2 is not nothing
+    define em2: String as emit_program(value of opt2)
+    assert em2 == "define f as not flag"
+
+    define src3: String as "define x as m[\"k\"][0]\n"
+    define opt3: Optional<Node> as parse_source(src3)
+    assert opt3 is not nothing
+    define em3: String as emit_program(value of opt3)
+    assert em3 == "define x as m[\"k\"][0]"
+
+    define src4: String as "define res as f(1, g(2))\n"
+    define opt4: Optional<Node> as parse_source(src4)
+    assert opt4 is not nothing
+    define em4: String as emit_program(value of opt4)
+    assert em4 == "define res as f(1, g(2))"

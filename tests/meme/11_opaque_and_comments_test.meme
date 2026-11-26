@@ -1,0 +1,35 @@
+use ../../ast
+use ../../stmt
+use ../../emit
+
+test opaque_passthrough_test:
+    define src: String as "define x as 1\nunrecognized custom syntax line\ndefine y as 2\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define em: String as emit_program(value of opt)
+    assert em == "define x as 1\n\nunrecognized custom syntax line\n\ndefine y as 2"
+
+test opaque_block_passthrough_test:
+    define src: String as "custom block header:\n    define a as 1\n    define b as 2\nprint \"done\"\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define em: String as emit_program(value of opt)
+    define reopt: Optional<Node> as parse_source(em + "\n")
+    assert reopt is not nothing
+    assert trees_equal(value of opt, value of reopt)
+
+test comments_emitted_verbatim_test:
+    define src: String as "# file header comment\nrecord Point:\n    # field comment\n    x: Int\n"
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define em: String as emit_program(value of opt)
+    define reopt: Optional<Node> as parse_source(em + "\n")
+    assert reopt is not nothing
+    assert trees_equal(value of opt, value of reopt)
+
+test empty_program_empty_output_test:
+    define src: String as ""
+    define opt: Optional<Node> as parse_source(src)
+    assert opt is not nothing
+    define em: String as emit_program(value of opt)
+    assert em == ""
